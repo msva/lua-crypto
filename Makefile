@@ -17,9 +17,11 @@ CRYPTO_ENGINE := openssl
 # Getting needed variables from OS
 UNAME := $(shell uname)
 DESTDIR := "/"
-LUA_LIBDIR= ${DESTDIR}$(shell pkg-config --variable INSTALL_CMOD lua)
-LUA_INC= $(shell pkg-config --variable INSTALL_INC lua)
-LUA_VERSION_NUM= ${$(shell pkg-config --variable R lua)//.}
+PKG_CONFIG := "pkg-config"
+LUA_IMPL := "lua"
+LUA_LIBDIR= ${DESTDIR}$(shell pkg-config --variable INSTALL_CMOD ${LUA_IMPL})
+LUA_INC= $(shell pkg-config --variable INSTALL_INC ${LUA_IMPL})
+LUA_VERSION_NUM= ${$(shell pkg-config --variable R ${LUA_IMPL})//.}
 
 
 ifeq ($(CRYPTO_ENGINE), openssl)
@@ -38,9 +40,9 @@ LIB_OPTION= -bundle -undefined dynamic_lookup
 endif
 
 # Compilation directives
-WARN= -O2 -Wall -fPIC -W -Waggregate-return -Wcast-align -Wmissing-prototypes -Wnested-externs -Wshadow -Wwrite-strings
+OPTS= -O2 -fPIC -std=c99
 INCS= -I$(LUA_INC)
-CC= gcc
+CC := cc
 
 
 OBJ= src/${T}.o
@@ -55,29 +57,29 @@ all: ${LIBPATH}
 
 ${OBJ}:
 	@$(call ext,"Object files compliling in progress...")
-	$(CC) $(WARN) $(LUACRYPTO_INCS) $(INCS) $(CFLAGS) $(LDFLAGS) ${LIB_OPTION} -c -o ${OBJ} ${SRC}
+	@$(CC) $(OPTS) $(LUACRYPTO_INCS) $(INCS) $(CFLAGS) $(LDFLAGS) ${LIB_OPTION} -c -o ${OBJ} ${SRC}
 	@$(call inf,"Object files compliling is done!")
 
 ${LIBPATH}: ${OBJ}
 	@$(call ext,"Library compiling and linking...")
 	@export MACOSX_DEPLOYMENT_TARGET="10.3";
-	$(CC) $(WARN) $(LUACRYPTO_INCS) $(INCS) $(CFLAGS) $(LDFLAGS) ${LIB_OPTION} -o ${LIBPATH} ${OBJ} ${LUACRYPTO_LIBS};
+	@$(CC) $(OPTS) $(LUACRYPTO_INCS) $(INCS) $(CFLAGS) $(LDFLAGS) ${LIB_OPTION} -o ${LIBPATH} ${OBJ} ${LUACRYPTO_LIBS};
 	@ln -s ${LIBNAME} ${SYMPATH}
 	@$(call inf,"Library compiling and linking is done!")
 
 install:
 	@$(call ext,"Installing...")
 	@mkdir -p $(LUA_LIBDIR)
-	cp -f ${LIBPATH} ${SYMPATH} $(LUA_LIBDIR)
+	@cp -f ${LIBPATH} ${SYMPATH} $(LUA_LIBDIR)
 	@$(call inf,"Installing is done!")
 
 clean:
 	@$(call wrn,"Cleaning...")
-	rm -f ${LIBPATH} ${SYMPATH} ${OBJ}
+	@rm -f ${LIBPATH} ${SYMPATH} ${OBJ}
 	@$(call inf,"Cleaning is done!")
 
 uninstall: clean
 	@$(call wrn,"Uninstalling...")
 	@cd $(LUA_LIBDIR);
-	rm -f ${LIBNAME}
+	@rm -f ${LIBNAME}
 	@$(call inf,"Uninstalling is done!")
