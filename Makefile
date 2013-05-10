@@ -42,15 +42,13 @@ endif
 # Compilation directives
 OPTS= -O2 -fPIC -std=c99
 INCS= -I$(LUA_INC)
-CC := cc
+CC := "cc"
 
 
 OBJ= src/${T}.o
 SRC= src/${T}.c
 HDR= src/${T}.h
-SYMNAME= ${T}.so
-LIBNAME= ${SYMNAME}.${V}
-SYMPATH= src/${SYMNAME}
+LIBNAME= ${T}.so
 LIBPATH= src/${LIBNAME}
 
 all: ${LIBPATH}
@@ -64,18 +62,17 @@ ${LIBPATH}: ${OBJ}
 	@$(call ext,"Library compiling and linking...")
 	@export MACOSX_DEPLOYMENT_TARGET="10.3";
 	@$(CC) $(OPTS) $(LUACRYPTO_INCS) $(INCS) $(CFLAGS) $(LDFLAGS) ${LIB_OPTION} -o ${LIBPATH} ${OBJ} ${LUACRYPTO_LIBS};
-	@ln -s ${LIBNAME} ${SYMPATH}
 	@$(call inf,"Library compiling and linking is done!")
 
 install:
 	@$(call ext,"Installing...")
 	@mkdir -p $(LUA_LIBDIR)
-	@cp -f ${LIBPATH} ${SYMPATH} $(LUA_LIBDIR)
+	@cp -f ${LIBPATH} $(LUA_LIBDIR)
 	@$(call inf,"Installing is done!")
 
 clean:
 	@$(call wrn,"Cleaning...")
-	@rm -f ${LIBPATH} ${SYMPATH} ${OBJ}
+	@rm -f ${LIBPATH} ${OBJ}
 	@$(call inf,"Cleaning is done!")
 
 uninstall: clean
