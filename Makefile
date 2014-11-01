@@ -20,8 +20,7 @@ DESTDIR := "/"
 PKG_CONFIG := "pkg-config"
 LUA_IMPL := "lua"
 LUA_LIBDIR= ${DESTDIR}$(shell pkg-config --variable INSTALL_CMOD ${LUA_IMPL})
-LUA_INC= $(shell pkg-config --variable INSTALL_INC ${LUA_IMPL})
-LUA_VERSION_NUM= ${$(shell pkg-config --variable R ${LUA_IMPL})//.}
+LUA_INC= $(shell pkg-config --variable includedir ${LUA_IMPL})
 
 
 ifeq ($(CRYPTO_ENGINE), openssl)
