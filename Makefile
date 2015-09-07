@@ -18,18 +18,19 @@ CRYPTO_ENGINE := openssl
 UNAME := $(shell uname)
 DESTDIR := "/"
 PKG_CONFIG := "pkg-config"
+GCRYPT_CONFIG := "libgcrypt-config"
 LUA_IMPL := "lua"
-LUA_LIBDIR= ${DESTDIR}$(shell pkg-config --variable INSTALL_CMOD ${LUA_IMPL})
-LUA_INC= $(shell pkg-config --variable includedir ${LUA_IMPL})
+LUA_LIBDIR= ${DESTDIR}$(shell $(PKG_CONFIG) --variable INSTALL_CMOD $(LUA_IMPL))
+LUA_CF= $(shell $(PKG_CONFIG) --cflags $(LUA_IMPL))
 
 
 ifeq ($(CRYPTO_ENGINE), openssl)
-LUACRYPTO_LIBS= -L$(shell pkg-config --variable libdir openssl) -lcrypto -lssl
-LUACRYPTO_INCS= -I$(shell pkg-config --variable includedir openssl) -DCRYPTO_OPENSSL=1
+LUACRYPTO_LD= -L$(shell $(PKG_CONFIG) --variable libdir openssl) -lcrypto -lssl
+LUACRYPTO_CF= -I$(shell $(PKG_CONFIG) --variable includedir openssl) -DCRYPTO_OPENSSL=1
 endif
 ifeq ($(CRYPTO_ENGINE), gcrypt)
-LUACRYPTO_LIBS= $(shell libgcrypt-config --libs)
-LUACRYPTO_INCS= $(shell libgcrypt-config --cflags) -DCRYPTO_GCRYPT=1
+LUACRYPTO_LD= $(shell $(GCRYPT_CONFIG) --libs)
+LUACRYPTO_CF= $(shell $(GCRYPT_CONFIG) --cflags) -DCRYPTO_GCRYPT=1
 endif
 ifeq ($(UNAME), Linux)
 LIB_OPTION= -shared
@@ -40,8 +41,9 @@ endif
 
 # Compilation directives
 OPTS= -O2 -fPIC -std=c99
-INCS= -I$(LUA_INC)
-CC := "cc"
+CF= $(OPTS) $(CFLAGS) $(LUA_CF) $(LUACRYPTO_CF)
+LF= $(LDFLAGS) $(LIB_OPTION) $(LUACRYPTO_LD)
+CC := "gcc"
 
 
 OBJ= src/${T}.o
@@ -54,13 +56,13 @@ all: ${LIBPATH}
 
 ${OBJ}:
 	@$(call ext,"Object files compliling in progress...")
-	@$(CC) $(OPTS) $(LUACRYPTO_INCS) $(INCS) $(CFLAGS) $(LDFLAGS) ${LIB_OPTION} -c -o ${OBJ} ${SRC}
+	@$(CC) $(CF) $(LF) -c -o ${OBJ} ${SRC}
 	@$(call inf,"Object files compliling is done!")
 
 ${LIBPATH}: ${OBJ}
 	@$(call ext,"Library compiling and linking...")
 	@export MACOSX_DEPLOYMENT_TARGET="10.3";
-	@$(CC) $(OPTS) $(LUACRYPTO_INCS) $(INCS) $(CFLAGS) $(LDFLAGS) ${LIB_OPTION} -o ${LIBPATH} ${OBJ} ${LUACRYPTO_LIBS};
+	@$(CC) $(CF) $(LF) -o ${LIBPATH} ${OBJ}
 	@$(call inf,"Library compiling and linking is done!")
 
 install:
