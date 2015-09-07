@@ -1,13 +1,13 @@
 # Some functions for candiness-looking
-err =						\
-	@echo -e "\e[1;31m*\e[0m $(1)\e[0m";	\
-	@exit 1;
-inf =						\
-	@echo -e "\e[1;32m*\e[0m $(1)\e[0m";
-wrn =						\
-	@echo -e "\e[1;33m*\e[0m $(1)\e[0m";
-ext =						\
-	@echo -e "\e[1;35m*\e[0m $(1)\e[0m";
+#err =						\
+#	@echo -e "\e[1;31m*\e[0m $(1)\e[0m";	\
+#	@exit 1;
+#inf =						\
+#	@echo -e "\e[1;32m*\e[0m $(1)\e[0m";
+#wrn =						\
+#	@echo -e "\e[1;33m*\e[0m $(1)\e[0m";
+#ext =						\
+#	@echo -e "\e[1;35m*\e[0m $(1)\e[0m";
 
 # LibName and LibVersion
 T= crypto
@@ -55,29 +55,29 @@ LIBPATH= src/${LIBNAME}
 all: ${LIBPATH}
 
 ${OBJ}:
-	@$(call ext,"Object files compliling in progress...")
-	@$(CC) $(CF) $(LF) -c -o ${OBJ} ${SRC}
-	@$(call inf,"Object files compliling is done!")
+#	@$(call ext,"Object files compliling in progress...")
+	$(CC) $(CF) $(LF) -c -o ${OBJ} ${SRC}
+#	@$(call inf,"Object files compliling is done!")
 
 ${LIBPATH}: ${OBJ}
-	@$(call ext,"Library compiling and linking...")
+#	@$(call ext,"Library compiling and linking...")
 	@export MACOSX_DEPLOYMENT_TARGET="10.3";
-	@$(CC) $(CF) $(LF) -o ${LIBPATH} ${OBJ}
-	@$(call inf,"Library compiling and linking is done!")
+	$(CC) $(CF) $(LF) -o ${LIBPATH} ${OBJ}
+#	@$(call inf,"Library compiling and linking is done!")
 
 install:
-	@$(call ext,"Installing...")
+#	@$(call ext,"Installing...")
 	@mkdir -p $(LUA_LIBDIR)
 	@cp -f ${LIBPATH} $(LUA_LIBDIR)
-	@$(call inf,"Installing is done!")
+#	@$(call inf,"Installing is done!")
 
 clean:
-	@$(call wrn,"Cleaning...")
+#	@$(call wrn,"Cleaning...")
 	@rm -f ${LIBPATH} ${OBJ}
-	@$(call inf,"Cleaning is done!")
+#	@$(call inf,"Cleaning is done!")
 
 uninstall: clean
-	@$(call wrn,"Uninstalling...")
+#	@$(call wrn,"Uninstalling...")
 	@cd $(LUA_LIBDIR);
 	@rm -f ${LIBNAME}
-	@$(call inf,"Uninstalling is done!")
+#	@$(call inf,"Uninstalling is done!")
