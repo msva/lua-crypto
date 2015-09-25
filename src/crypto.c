@@ -39,6 +39,96 @@
   #error "LUACRYPTO_DRIVER not supported"
 #endif
 
+#ifndef luaL_typerror
+/* implemented as luaL_typerror until lua 5.1, dropped in 5.2
+ *  * (C) 1994-2012 Lua.org, PUC-Rio. MIT license
+ *   */
+LUALIB_API int luaL_typerror (lua_State *L, int narg, const char *tname) {
+    const char *msg = lua_pushfstring(L, "%s expected, got %s",
+                      tname, luaL_typename(L, narg));
+    return luaL_argerror(L, narg, msg);
+}
+
+#endif
+
+#ifndef lua_strlen
+#define lua_strlen lua_rawlen
+#endif
+
+
+#ifndef luaL_findtable
+LUALIB_API const char *luaL_findtable (lua_State *L, int idx,
+                                       const char *fname, int szhint) {
+  const char *e;
+  lua_pushvalue(L, idx);
+  do {
+    e = strchr(fname, '.');
+    if (e == NULL) e = fname + strlen(fname);
+    lua_pushlstring(L, fname, e - fname);
+    lua_rawget(L, -2);
+    if (lua_isnil(L, -1)) {  /* no such field? */
+      lua_pop(L, 1);  /* remove this nil */
+      lua_createtable(L, 0, (*e == '.' ? 1 : szhint)); /* new table for field */
+      lua_pushlstring(L, fname, e - fname);
+      lua_pushvalue(L, -2);
+      lua_settable(L, -4);  /* set new table into field */
+    }
+    else if (!lua_istable(L, -1)) {  /* field has a non-table value? */
+      lua_pop(L, 2);  /* remove table and value */
+      return fname;  /* return problematic part of the name */
+    }
+    lua_remove(L, -2);  /* remove previous table */
+    fname = e + 1;
+  } while (*e == '.');
+  return NULL;
+}
+#endif
+
+#ifndef luaL_checkint
+#define luaL_checkint(L,n) luaL_checknumber(L,n)
+#endif
+
+#if !defined(LUA_VERSION_NUM) || LUA_VERSION_NUM < 502
+#define LUA_RIDX_GLOBALS LUA_GLOBALSINDEX
+#endif
+
+#ifndef luaL_openlib
+static int libsize (const luaL_Reg *l) {
+  int size = 0;
+  for (; l->name; l++) size++;
+  return size;
+}
+LUALIB_API void luaL_openlib (lua_State *L, const char *libname,
+                              const luaL_Reg *l, int nup) {
+  if (libname) {
+    int size = libsize(l);
+    /* check whether lib already exists */
+    luaL_findtable(L, LUA_REGISTRYINDEX, "_LOADED", 1);
+    lua_getfield(L, -1, libname);  /* get _LOADED[libname] */
+    if (!lua_istable(L, -1)) {  /* not found? */
+      lua_pop(L, 1);  /* remove previous result */
+      /* try global variable (and create one if it does not exist) */
+      if (luaL_findtable(L, LUA_RIDX_GLOBALS, libname, size) != NULL)
+        luaL_error(L, "name conflict for module " LUA_QS, libname);
+      lua_pushvalue(L, -1);
+      lua_setfield(L, -3, libname);  /* _LOADED[libname] = new table */
+    }
+    lua_remove(L, -2);  /* remove _LOADED table */
+    lua_insert(L, -(nup+1));  /* move library table to below upvalues */
+  }
+  for (; l->name; l++) {
+    int i;
+    for (i=0; i<nup; i++)  /* copy upvalues to the top */
+      lua_pushvalue(L, -nup);
+    lua_pushcclosure(L, l->func, nup);
+    lua_setfield(L, -(nup+2), l->name);
+  }
+  lua_pop(L, nup);  /* remove upvalues */
+}
+#endif
+
+
+
 LUACRYPTO_API int luaopen_crypto(lua_State *L);
 
 //static char* bin2hex(const unsigned char *digest, size_t written)
@@ -576,7 +666,7 @@ static int rand_cleanup(lua_State *L)
 /*
 ** Create a metatable and leave it on top of the stack.
 */
-LUACRYPTO_API int luacrypto_createmeta (lua_State *L, const char *name, const luaL_reg *methods) {
+LUACRYPTO_API int luacrypto_createmeta (lua_State *L, const char *name, const luaL_Reg *methods) {
   if (!luaL_newmetatable (L, name))
     return 0;
 
@@ -600,12 +690,12 @@ LUACRYPTO_API int luacrypto_createmeta (lua_State *L, const char *name, const lu
 */
 static void create_metatables (lua_State *L)
 {
-  struct luaL_reg evp_functions[] = {
+  struct luaL_Reg evp_functions[] = {
     { "digest", evp_fdigest },
     { "new", evp_fnew },
     {NULL, NULL},
   };
-  struct luaL_reg evp_methods[] = {
+  struct luaL_Reg evp_methods[] = {
     { "__tostring", evp_tostring },
     { "__gc", evp_gc },
     { "clone", evp_clone },
@@ -615,12 +705,12 @@ static void create_metatables (lua_State *L)
     { "update",	evp_update },
     {NULL, NULL},
   };
-  struct luaL_reg hmac_functions[] = {
+  struct luaL_Reg hmac_functions[] = {
     { "digest", hmac_fdigest },
     { "new", hmac_fnew },
     { NULL, NULL }
   };
-  struct luaL_reg hmac_methods[] = {
+  struct luaL_Reg hmac_methods[] = {
     { "__tostring", hmac_tostring },
     { "__gc", hmac_gc },
     { "clone", hmac_clone },
@@ -630,7 +720,7 @@ static void create_metatables (lua_State *L)
     { "update", hmac_update },
     { NULL, NULL }
   };
-  struct luaL_reg rand_functions[] = {
+  struct luaL_Reg rand_functions[] = {
     { "bytes", rand_bytes },
     { "pseudo_bytes", rand_pseudo_bytes },
     { "add", rand_add },
@@ -692,7 +782,7 @@ LUACRYPTO_API int luaopen_crypto(lua_State *L)
   gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0); 
 #endif
 
-  struct luaL_reg core[] = {
+  struct luaL_Reg core[] = {
     {NULL, NULL},
   };
   create_metatables (L);
